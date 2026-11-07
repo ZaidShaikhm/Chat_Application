@@ -1,0 +1,350 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - DjangoChat{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- User Welcome Banner -->
+    <div class="app-card p-4 mb-4">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="avatar-wrapper">
+                    {% if profile.profile_picture %}
+                        <img src="{{ profile.profile_picture.url }}" alt="{{ user.username }}" class="avatar avatar-lg">
+                    {% else %}
+                        <div class="avatar avatar-lg">
+                            {{ user.first_name|default:user.username|make_list|first|upper }}
+                        </div>
+                    {% endif %}
+                    <span class="status-indicator status-online pulse-online"></span>
+                </div>
+                <div>
+                    <h4 class="fw-bold mb-1">Hello, {{ profile.full_name }}! 👋</h4>
+                    <p class="text-secondary small mb-0">
+                        <span class="badge bg-success-subtle text-success me-2">Online</span>
+                        <span class="text-muted">@{{ user.username }} &bull; {{ user.email }}</span>
+                    </p>
+                    <p class="text-secondary small mt-1 mb-0 italic">"{{ profile.bio }}"</p>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-outline-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#createGroupModal">
+                    <i class="bi bi-people-fill me-1"></i> New Group
+                </button>
+                <a href="{% url 'profile' %}" class="btn btn-primary-custom btn-sm rounded-pill px-3">
+                    <i class="bi bi-pencil-square me-1"></i> Edit Profile
+                </a>
+                <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm rounded-pill px-3" title="Log out of account">
+                    <i class="bi bi-box-arrow-right me-1"></i> Logout
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left Column: Recent Chats & Groups -->
+        <div class="col-lg-5">
+            <!-- Recent Conversations -->
+            <div class="app-card mb-4 overflow-hidden">
+                <div class="p-3 border-bottom d-flex align-items-center justify-content-between">
+                    <h6 class="fw-bold mb-0">
+                        <i class="bi bi-chat-left-dots-fill text-primary me-2"></i> Recent Conversations
+                    </h6>
+                    <span class="badge bg-body-tertiary text-secondary">{{ recent_chats|length }}</span>
+                </div>
+                <div class="list-group list-group-flush" style="max-height: 380px; overflow-y: auto;">
+                    {% if recent_chats %}
+                        {% for item in recent_chats %}
+                        <a href="{% url 'private_chat' username=item.other_user.username %}" class="list-group-item list-group-item-action d-flex align-items-center gap-3 p-3 border-bottom">
+                            <div class="avatar-wrapper">
+                                {% if item.other_user.profile.profile_picture %}
+                                    <img src="{{ item.other_user.profile.profile_picture.url }}" alt="{{ item.other_user.username }}" class="avatar">
+                                {% else %}
+                                    <div class="avatar">
+                                        {{ item.other_user.first_name|default:item.other_user.username|make_list|first|upper }}
+                                    </div>
+                                {% endif %}
+                                <span class="status-indicator {% if item.other_user.profile.is_online %}status-online pulse-online{% else %}status-offline{% endif %}" id="userStatus-{{ item.other_user.id }}"></span>
+                            </div>
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <h6 class="mb-0 fw-semibold text-truncate" style="max-width: 170px;">
+                                        {{ item.other_user.profile.full_name }}
+                                    </h6>
+                                    {% if item.last_message %}
+                                        <small class="text-muted" style="font-size: 0.72rem;">{{ item.last_message.timestamp|date:"h:i A" }}</small>
+                                    {% endif %}
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <p class="small text-muted mb-0 text-truncate" style="max-width: 200px;">
+                                        {% if item.last_message %}
+                                            {% if item.last_message.sender == user %}You: {% endif %}{{ item.last_message.content|default:"[Attachment]" }}
+                                        {% else %}
+                                            <span class="text-secondary italic">Started a new conversation</span>
+                                        {% endif %}
+                                    </p>
+                                    {% if item.unread_count > 0 %}
+                                        <span class="unread-badge">{{ item.unread_count }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    {% else %}
+                        <div class="p-4 text-center text-muted">
+                            <i class="bi bi-chat-square-text fs-2 d-block mb-2 text-secondary"></i>
+                            <p class="small mb-2">No conversations yet.</p>
+                            <p class="small text-muted">Pick a user from the directory to start chatting!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Groups Section -->
+            <div class="app-card overflow-hidden">
+                <div class="p-3 border-bottom d-flex align-items-center justify-content-between">
+                    <h6 class="fw-bold mb-0">
+                        <i class="bi bi-people-fill text-info me-2"></i> Chat Groups
+                    </h6>
+                    <button class="btn btn-sm btn-link p-0 text-decoration-none" data-bs-toggle="modal" data-bs-target="#createGroupModal">
+                        <i class="bi bi-plus-circle me-1"></i> Create
+                    </button>
+                </div>
+                <div class="list-group list-group-flush" style="max-height: 320px; overflow-y: auto;">
+                    {% if all_groups %}
+                        {% for group in all_groups %}
+                        <div class="list-group-item d-flex align-items-center gap-3 p-3 border-bottom">
+                            {% if group.avatar %}
+                                <img src="{{ group.avatar.url }}" alt="{{ group.name }}" class="avatar">
+                            {% else %}
+                                <div class="avatar bg-info-subtle text-info">
+                                    <i class="bi bi-people-fill"></i>
+                                </div>
+                            {% endif %}
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <h6 class="mb-0 fw-semibold text-truncate" style="max-width: 160px;">{{ group.name }}</h6>
+                                    <span class="badge bg-body-tertiary text-muted" style="font-size: 0.7rem;">{{ group.members.count }} members</span>
+                                </div>
+                                <p class="small text-muted mb-2 text-truncate" style="font-size: 0.78rem;">
+                                    {{ group.description|default:"No description" }}
+                                </p>
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        {% if user in group.members.all %}
+                                            {% if group.created_by == user %}
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.68rem;">Admin</span>
+                                            {% else %}
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.68rem;">Member</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.68rem;">Not Joined</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="d-flex align-items-center gap-1">
+                                        {% if user in group.members.all %}
+                                            <a href="{% url 'group_chat' group_id=group.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1" style="font-size: 0.75rem;">
+                                                <i class="bi bi-chat-fill me-1"></i> Open Chat
+                                            </a>
+                                        {% else %}
+                                            <a href="{% url 'join_group' group_id=group.id %}" class="btn btn-sm btn-primary-custom rounded-pill px-3 py-1" style="font-size: 0.75rem;">
+                                                <i class="bi bi-box-arrow-in-right me-1"></i> Join
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="p-4 text-center text-muted">
+                            <p class="small mb-0">No groups created yet. Be the first to create one!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Registered Users Directory & Search -->
+        <div class="col-lg-7">
+            <div class="app-card p-4">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                    <div>
+                        <h5 class="fw-bold mb-1">
+                            <i class="bi bi-person-lines-fill text-primary me-2"></i> Registered Users Directory
+                        </h5>
+                        <p class="text-secondary small mb-0">Discover users and click to start instant private messaging</p>
+                    </div>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill">
+                        {{ users_list|length }} Available
+                    </span>
+                </div>
+
+                <!-- Search Users Form -->
+                <form method="GET" action="{% url 'dashboard' %}" class="mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text bg-body-tertiary border-end-0">
+                            <i class="bi bi-search text-muted"></i>
+                        </span>
+                        <input type="text" name="q" class="form-control" placeholder="Search by name, username, or email..." value="{{ query }}">
+                        {% if query %}
+                            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary" title="Clear Search">
+                                <i class="bi bi-x-lg"></i>
+                            </a>
+                        {% endif %}
+                        <button type="submit" class="btn btn-primary-custom">Search</button>
+                    </div>
+                </form>
+
+                <!-- Users Grid / List -->
+                <div class="row g-3" style="max-height: 600px; overflow-y: auto;">
+                    {% if users_list %}
+                        {% for u in users_list %}
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded-3 bg-body-tertiary d-flex flex-column justify-content-between h-100">
+                                <div class="d-flex align-items-start gap-3 mb-3">
+                                    <div class="avatar-wrapper">
+                                        {% if u.profile.profile_picture %}
+                                            <img src="{{ u.profile.profile_picture.url }}" alt="{{ u.username }}" class="avatar">
+                                        {% else %}
+                                            <div class="avatar">
+                                                {{ u.first_name|default:u.username|make_list|first|upper }}
+                                            </div>
+                                        {% endif %}
+                                        <span class="status-indicator {% if u.profile.is_online %}status-online pulse-online{% else %}status-offline{% endif %}" id="userStatus-{{ u.id }}"></span>
+                                    </div>
+                                    <div class="flex-grow-1 min-w-0">
+                                        <h6 class="mb-0 fw-bold text-truncate">{{ u.profile.full_name }}</h6>
+                                        <div class="small text-muted">@{{ u.username }}</div>
+                                        <div class="small mt-1 text-truncate" style="font-size: 0.78rem;" title="{{ u.profile.bio }}">
+                                            {{ u.profile.bio|default:"Available" }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between pt-2 border-top">
+                                    <span class="small {% if u.profile.is_online %}text-success fw-semibold{% else %}text-muted{% endif %}">
+                                        <i class="bi bi-circle-fill" style="font-size: 7px;"></i>
+                                        {% if u.profile.is_online %}Online{% else %}Offline{% endif %}
+                                    </span>
+                                    <div class="d-flex align-items-center gap-1">
+                                        {% if user.is_superuser or user.is_staff or user.username == 'admin' %}
+                                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1" data-bs-toggle="modal" data-bs-target="#deleteUserModal-{{ u.id }}" title="Delete {{ u.username }}">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        {% endif %}
+                                        <a href="{% url 'private_chat' username=u.username %}" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1">
+                                            <i class="bi bi-chat-fill me-1"></i> Chat
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="col-12 text-center py-5">
+                            <i class="bi bi-people fs-1 text-secondary d-block mb-2"></i>
+                            <h6 class="fw-semibold text-secondary">No registered users found matching "{{ query }}"</h6>
+                            <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-primary mt-2">View All Users</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Create New Group -->
+<div class="modal fade" id="createGroupModal" tabindex="-1" aria-labelledby="createGroupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content app-card border-0">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold" id="createGroupModalLabel">
+                    <i class="bi bi-people-fill text-primary me-2"></i> Create New Chat Group
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'create_group' %}" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Group Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. MCA Project Discussion" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Description</label>
+                        <textarea name="description" class="form-control" rows="2" placeholder="What is this group about?"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Group Avatar (Optional)</label>
+                        <input type="file" name="avatar" class="form-control" accept="image/*">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold small">Select Initial Members</label>
+                        <div class="border rounded p-2" style="max-height: 180px; overflow-y: auto;">
+                            {% for u in users_list %}
+                            <div class="form-check py-1">
+                                <input class="form-check-input" type="checkbox" name="members" value="{{ u.id }}" id="memberCheck{{ u.id }}">
+                                <label class="form-check-label d-flex align-items-center gap-2 small" for="memberCheck{{ u.id }}">
+                                    <div class="avatar avatar-sm">
+                                        {{ u.first_name|default:u.username|make_list|first|upper }}
+                                    </div>
+                                    <span><strong>{{ u.profile.full_name }}</strong> (@{{ u.username }})</span>
+                                </label>
+                            </div>
+                            {% empty %}
+                            <p class="small text-muted mb-0">No other registered users available yet.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary-custom">
+                        <i class="bi bi-check2-circle me-1"></i> Create Group
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Admin User Delete Modals -->
+{% if user.is_superuser or user.is_staff or user.username == 'admin' %}
+    {% for u in users_list %}
+    <div class="modal fade" id="deleteUserModal-{{ u.id }}" tabindex="-1" aria-labelledby="deleteUserModalLabel-{{ u.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content app-card border-0">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold text-danger" id="deleteUserModalLabel-{{ u.id }}">
+                        <i class="bi bi-person-x-fill text-danger me-2"></i> Delete User Account
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{% url 'delete_user' user_id=u.id %}" method="POST">
+                    {% csrf_token %}
+                    <div class="modal-body p-4 text-center">
+                        <div class="avatar avatar-lg bg-danger-subtle text-danger mb-3 mx-auto">
+                            <i class="bi bi-trash3-fill fs-3"></i>
+                        </div>
+                        <h5 class="fw-bold mb-2">Delete user "@{{ u.username }}"?</h5>
+                        <p class="text-secondary small mb-2">
+                            Are you sure you want to permanently delete <strong>{{ u.profile.full_name }}</strong> (@{{ u.username }})?
+                            All of their messages, chat records, and profile details will be permanently removed from SQLite.
+                        </p>
+                        <div class="alert alert-danger py-2 px-3 small mb-0 border-0">
+                            <i class="bi bi-shield-lock-fill me-1"></i> <strong>Admin Privilege:</strong> Only system administrators can delete registered users.
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger px-4 fw-semibold">
+                            <i class="bi bi-trash-fill me-1"></i> Yes, Delete User
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,442 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ group.name }} - Group Chat | DjangoChat{% endblock %}
+
+{% block content %}
+<div class="chat-app-container">
+    <!-- Sidebar: Group List -->
+    <div class="chat-sidebar d-none d-md-flex" id="groupSidebar">
+        <div class="chat-sidebar-header">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <h5 class="fw-bold mb-0">Groups</h5>
+                <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary rounded-circle" title="Back to Dashboard">
+                    <i class="bi bi-grid-fill"></i>
+                </a>
+            </div>
+            <div class="sidebar-search-box">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" id="sidebarGroupFilter" class="form-control form-control-sm" placeholder="Filter groups...">
+            </div>
+        </div>
+
+        <!-- Groups List -->
+        <div class="chat-list" id="sidebarGroupList">
+            {% for g in sidebar_groups %}
+            <a href="{% url 'group_chat' group_id=g.id %}" class="chat-item {% if g.id == group.id %}active{% endif %}">
+                {% if g.avatar %}
+                    <img src="{{ g.avatar.url }}" alt="{{ g.name }}" class="avatar">
+                {% else %}
+                    <div class="avatar bg-info-subtle text-info">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                {% endif %}
+                <div class="chat-item-info">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="chat-item-name">{{ g.name }}</div>
+                        <div class="chat-item-time">{{ g.members.count }} <i class="bi bi-people"></i></div>
+                    </div>
+                    <div class="chat-item-snippet">
+                        {{ g.description|default:"Group conversation" }}
+                    </div>
+                </div>
+            </a>
+            {% empty %}
+            <div class="p-3 text-center text-muted small">No other groups joined.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Main Group Chat Window -->
+    <div class="chat-main">
+        <!-- Header -->
+        <div class="chat-header">
+            <div class="d-flex align-items-center gap-3">
+                <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary d-md-none me-1" title="Back to Dashboard">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                {% if group.avatar %}
+                    <img src="{{ group.avatar.url }}" alt="{{ group.name }}" class="avatar">
+                {% else %}
+                    <div class="avatar bg-info-subtle text-info">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                {% endif %}
+                <div>
+                    <h6 class="chat-header-title">{{ group.name }}</h6>
+                    <div class="chat-header-status">
+                        <span>{{ memberships.count }} members</span> &bull; 
+                        <a href="#" class="text-primary text-decoration-none" data-bs-toggle="modal" data-bs-target="#viewMembersModal">
+                            View Members
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Controls: Status & Add Member & Group Options -->
+            <div class="d-flex align-items-center gap-2">
+                <span id="wsStatusBadge" class="badge bg-secondary-subtle text-secondary border">Connecting...</span>
+                <button class="btn btn-sm btn-outline-primary rounded-pill d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addMemberModal">
+                    <i class="bi bi-person-plus-fill"></i> <span class="d-none d-sm-inline">Add Member</span>
+                </button>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary rounded-circle p-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Group Actions">
+                        <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-2">
+                        <li>
+                            <button class="dropdown-item d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#viewMembersModal">
+                                <i class="bi bi-people-fill text-primary"></i> View Members ({{ memberships.count }})
+                            </button>
+                        </li>
+                        <li>
+                            <button class="dropdown-item d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#addMemberModal">
+                                <i class="bi bi-person-plus-fill text-success"></i> Add Members
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <button class="dropdown-item d-flex align-items-center gap-2 text-warning-emphasis" data-bs-toggle="modal" data-bs-target="#leaveGroupModal">
+                                <i class="bi bi-box-arrow-right text-warning"></i> Leave Group
+                            </button>
+                        </li>
+                        {% if is_admin %}
+                        <li>
+                            <button class="dropdown-item d-flex align-items-center gap-2 text-danger" data-bs-toggle="modal" data-bs-target="#deleteGroupModal">
+                                <i class="bi bi-trash3-fill text-danger"></i> Delete Group
+                            </button>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages Area -->
+        <div class="chat-messages-container" id="chatMessagesContainer">
+            <div class="message-date-divider">
+                <span>Welcome to {{ group.name }} - Created by @{{ group.created_by.username }}</span>
+            </div>
+
+            <!-- Group Messages History -->
+            {% for msg in chat_messages %}
+            <div class="message-row {% if msg.sender == user %}sent{% else %}received{% endif %}" id="msg-{{ msg.id }}">
+                {% if msg.sender != user %}
+                    <div class="avatar avatar-sm">
+                        {% if msg.sender.profile.profile_picture %}
+                            <img src="{{ msg.sender.profile.profile_picture.url }}" alt="{{ msg.sender.username }}" class="avatar avatar-sm">
+                        {% else %}
+                            {{ msg.sender.first_name|default:msg.sender.username|make_list|first|upper }}
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                <div class="message-content-wrapper">
+                    {% if msg.sender != user %}
+                        <div class="message-sender-name">{{ msg.sender.profile.full_name }}</div>
+                    {% endif %}
+
+                    <div class="message-bubble">
+                        {{ msg.content }}
+
+                        <!-- Attachments if any -->
+                        {% for att in msg.attachments.all %}
+                        <div class="attachment-card">
+                            {% if att.is_image %}
+                                <a href="{{ att.file.url }}" target="_blank">
+                                    <img src="{{ att.file.url }}" alt="{{ att.file_name }}" class="attachment-img">
+                                </a>
+                            {% else %}
+                                <a href="{{ att.file.url }}" target="_blank" class="attachment-file" download>
+                                    <i class="bi bi-file-earmark-arrow-down fs-5"></i>
+                                    <div>
+                                        <div class="fw-semibold text-truncate" style="max-width: 180px;">{{ att.file_name }}</div>
+                                        <small class="opacity-75">{{ att.file_size|default:"Download" }}</small>
+                                    </div>
+                                </a>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="message-meta">
+                        <span>{{ msg.timestamp|date:"h:i A" }}</span>
+                    </div>
+                </div>
+
+                {% if msg.sender == user %}
+                    <div class="avatar avatar-sm">
+                        {% if user.profile.profile_picture %}
+                            <img src="{{ user.profile.profile_picture.url }}" alt="{{ user.username }}" class="avatar avatar-sm">
+                        {% else %}
+                            {{ user.first_name|default:user.username|make_list|first|upper }}
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Live Typing Indicator -->
+        <div class="typing-indicator-container" id="typingIndicator">
+            <div class="typing-dots">
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+            </div>
+            <span id="typingUserText">Someone is typing...</span>
+        </div>
+
+        <!-- File Attachment Live Preview Bar -->
+        <div class="file-preview-bar" id="filePreviewBar">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-paperclip fs-5 text-primary"></i>
+                <div>
+                    <span class="fw-semibold" id="previewFileName">filename.ext</span>
+                    <small class="text-muted ms-2" id="previewFileSize">0 KB</small>
+                </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-danger border-0 rounded-circle" id="cancelFileBtn" title="Remove attachment">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <!-- Message Input Footer -->
+        <div class="chat-footer">
+            <form id="groupChatForm" onsubmit="return false;">
+                {% csrf_token %}
+                <input type="file" id="chatFileInput" class="d-none">
+
+                <div class="chat-input-wrapper">
+                    <!-- File Attachment -->
+                    <button type="button" class="chat-action-btn" onclick="document.getElementById('chatFileInput').click();" title="Attach file or photo">
+                        <i class="bi bi-paperclip"></i>
+                    </button>
+
+                    <!-- Message Input -->
+                    <input type="text" id="chatMessageInput" class="chat-input-field" placeholder="Message {{ group.name }}..." autocomplete="off">
+
+                    <!-- Send Button -->
+                    <button type="button" id="chatSendBtn" class="chat-send-btn" title="Send message">
+                        <i class="bi bi-send-fill"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: View Members -->
+<div class="modal fade" id="viewMembersModal" tabindex="-1" aria-labelledby="viewMembersLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content app-card border-0">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold" id="viewMembersLabel">
+                    <i class="bi bi-people-fill text-primary me-2"></i> {{ group.name }} Members ({{ memberships.count }})
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3" style="max-height: 360px; overflow-y: auto;">
+                <div class="list-group list-group-flush">
+                    {% for m in memberships %}
+                    <div class="list-group-item d-flex align-items-center justify-content-between p-2 border-bottom">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar-wrapper">
+                                {% if m.user.profile.profile_picture %}
+                                    <img src="{{ m.user.profile.profile_picture.url }}" alt="{{ m.user.username }}" class="avatar avatar-sm">
+                                {% else %}
+                                    <div class="avatar avatar-sm">
+                                        {{ m.user.first_name|default:m.user.username|make_list|first|upper }}
+                                    </div>
+                                {% endif %}
+                                <span class="status-indicator {% if m.user.profile.is_online %}status-online{% else %}status-offline{% endif %}" id="userStatus-{{ m.user.id }}"></span>
+                            </div>
+                            <div>
+                                <div class="fw-semibold small">
+                                    {{ m.user.profile.full_name }} {% if m.user == user %}<span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.65rem;">You</span>{% endif %}
+                                </div>
+                                <div class="text-muted" style="font-size: 0.72rem;">@{{ m.user.username }}</div>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            {% if m.role == 'admin' %}
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Admin</span>
+                            {% else %}
+                                <span class="badge bg-body-tertiary text-secondary">Member</span>
+                            {% endif %}
+                            {% if is_admin and m.user != user %}
+                            <form action="{% url 'remove_group_member' group_id=group.id user_id=m.user.id %}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to remove {{ m.user.username }} from the group?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1" title="Remove {{ m.user.username }} from group">
+                                    <i class="bi bi-person-x-fill"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer border-top d-flex justify-content-between">
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-warning" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#leaveGroupModal">
+                        <i class="bi bi-box-arrow-right me-1"></i> Leave Group
+                    </button>
+                    {% if is_admin %}
+                    <button type="button" class="btn btn-sm btn-outline-danger ms-1" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#deleteGroupModal">
+                        <i class="bi bi-trash3-fill me-1"></i> Delete Group
+                    </button>
+                    {% endif %}
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add New Members -->
+<div class="modal fade" id="addMemberModal" tabindex="-1" aria-labelledby="addMemberLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content app-card border-0">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold" id="addMemberLabel">
+                    <i class="bi bi-person-plus-fill text-primary me-2"></i> Add Members to {{ group.name }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'add_group_member' group_id=group.id %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    {% if available_users %}
+                        <p class="small text-secondary mb-3">Select registered users you want to invite into this group:</p>
+                        <div class="border rounded p-2" style="max-height: 220px; overflow-y: auto;">
+                            {% for u in available_users %}
+                            <div class="form-check py-1">
+                                <input class="form-check-input" type="checkbox" name="members" value="{{ u.id }}" id="addCheck{{ u.id }}">
+                                <label class="form-check-label d-flex align-items-center gap-2 small" for="addCheck{{ u.id }}">
+                                    <div class="avatar avatar-sm">
+                                        {{ u.first_name|default:u.username|make_list|first|upper }}
+                                    </div>
+                                    <span><strong>{{ u.profile.full_name }}</strong> (@{{ u.username }})</span>
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-check2-all fs-1 text-success d-block mb-2"></i>
+                            <p class="small mb-0">All registered users are already members of this group!</p>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                    {% if available_users %}
+                    <button type="submit" class="btn btn-primary-custom">
+                        <i class="bi bi-person-check-fill me-1"></i> Add Selected Members
+                    </button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Leave Group Confirmation -->
+<div class="modal fade" id="leaveGroupModal" tabindex="-1" aria-labelledby="leaveGroupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content app-card border-0">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold text-warning-emphasis" id="leaveGroupModalLabel">
+                    <i class="bi bi-box-arrow-right text-warning me-2"></i> Leave Group
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'leave_group' group_id=group.id %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-body p-4 text-center">
+                    <div class="avatar avatar-lg bg-warning-subtle text-warning mb-3 mx-auto">
+                        <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Leave "{{ group.name }}"?</h5>
+                    <p class="text-secondary small mb-0">
+                        You will be removed from this group and will no longer receive new messages or updates.
+                        {% if is_admin and memberships.count == 1 %}
+                            <br><span class="text-danger fw-semibold">Note: Since you are the only member, leaving will delete the group entirely.</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning px-4 fw-semibold">
+                        <i class="bi bi-box-arrow-right me-1"></i> Yes, Leave Group
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Delete Group Confirmation -->
+{% if is_admin %}
+<div class="modal fade" id="deleteGroupModal" tabindex="-1" aria-labelledby="deleteGroupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content app-card border-0">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold text-danger" id="deleteGroupModalLabel">
+                    <i class="bi bi-trash3-fill text-danger me-2"></i> Delete Group Permanently
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'delete_group' group_id=group.id %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-body p-4 text-center">
+                    <div class="avatar avatar-lg bg-danger-subtle text-danger mb-3 mx-auto">
+                        <i class="bi bi-trash3-fill fs-3"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Permanently delete "{{ group.name }}"?</h5>
+                    <p class="text-secondary small mb-2">
+                        Are you sure you want to delete this group? All conversations, message history, memberships, and attachments will be <strong>permanently removed</strong> from the SQLite database.
+                    </p>
+                    <div class="alert alert-danger py-2 px-3 small mb-0 border-0">
+                        <i class="bi bi-exclamation-circle-fill me-1"></i> This action cannot be undone!
+                    </div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger px-4 fw-semibold">
+                        <i class="bi bi-trash3-fill me-1"></i> Yes, Delete Group
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize Group Chat Real-Time Engine
+    document.addEventListener('DOMContentLoaded', () => {
+        window.chatClient = new ChatClient({
+            roomType: 'group',
+            roomId: {{ group.id }},
+            currentUserId: {{ user.id }},
+            currentUsername: "{{ user.username }}"
+        });
+
+        // Sidebar Filter
+        const filterInput = document.getElementById('sidebarGroupFilter');
+        if (filterInput) {
+            filterInput.addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase();
+                const items = document.querySelectorAll('#sidebarGroupList .chat-item');
+                items.forEach(item => {
+                    const name = item.querySelector('.chat-item-name').innerText.toLowerCase();
+                    item.style.display = name.includes(term) ? 'flex' : 'none';
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

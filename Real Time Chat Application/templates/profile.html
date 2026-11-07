@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block title %}My Profile - DjangoChat{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="app-card p-4 p-md-5">
+                <div class="d-flex align-items-center justify-content-between border-bottom pb-4 mb-4 flex-wrap gap-2">
+                    <div>
+                        <h3 class="fw-bold mb-1">Account & Profile Settings</h3>
+                        <p class="text-secondary small mb-0">Update your personal details and custom chat avatar</p>
+                    </div>
+                    <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                        <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+                    </a>
+                </div>
+
+                <form method="POST" action="{% url 'profile' %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+
+                    <div class="row g-4 align-items-start">
+                        <!-- Left: Avatar Preview -->
+                        <div class="col-md-4 text-center">
+                            <div class="avatar-wrapper mb-3">
+                                {% if profile.profile_picture %}
+                                    <img src="{{ profile.profile_picture.url }}" id="avatarPreview" alt="{{ user.username }}" class="avatar avatar-xl shadow-sm">
+                                {% else %}
+                                    <div id="avatarFallback" class="avatar avatar-xl shadow-sm">
+                                        {{ user.first_name|default:user.username|make_list|first|upper }}
+                                    </div>
+                                    <img id="avatarPreview" src="" alt="Avatar preview" class="avatar avatar-xl shadow-sm d-none">
+                                {% endif %}
+                                <span class="status-indicator status-online pulse-online" style="width: 18px; height: 18px; border-width: 3px;"></span>
+                            </div>
+                            <h6 class="fw-bold mb-0">{{ profile.full_name }}</h6>
+                            <div class="text-muted small">@{{ user.username }}</div>
+                            <div class="mt-3">
+                                <label for="profile_picture_input" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                    <i class="bi bi-camera me-1"></i> Change Photo
+                                </label>
+                                <input type="file" name="profile_picture" id="profile_picture_input" class="d-none" accept="image/*" onchange="previewImage(this)">
+                            </div>
+                        </div>
+
+                        <!-- Right: Form Fields -->
+                        <div class="col-md-8">
+                            <!-- Username (Readonly) -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small">Username</label>
+                                <input type="text" class="form-control" value="{{ user.username }}" disabled readonly>
+                                <small class="text-muted" style="font-size: 0.75rem;">Username cannot be changed after registration.</small>
+                            </div>
+
+                            <!-- Full Name -->
+                            <div class="mb-3">
+                                <label for="{{ form.full_name.id_for_label }}" class="form-label fw-semibold small">Full Name</label>
+                                {{ form.full_name }}
+                            </div>
+
+                            <!-- Email -->
+                            <div class="mb-3">
+                                <label for="{{ form.email.id_for_label }}" class="form-label fw-semibold small">Email Address</label>
+                                {{ form.email }}
+                            </div>
+
+                            <!-- Bio -->
+                            <div class="mb-3">
+                                <label for="{{ form.bio.id_for_label }}" class="form-label fw-semibold small">Status / Bio</label>
+                                {{ form.bio }}
+                                <small class="text-muted" style="font-size: 0.75rem;">This will be displayed next to your name across user lists.</small>
+                            </div>
+
+                            <!-- Email Notifications Toggle -->
+                            <div class="mb-4 p-3 rounded border bg-light-subtle">
+                                <div class="form-check form-switch d-flex align-items-center gap-2 mb-1">
+                                    {{ form.email_notifications }}
+                                    <label class="form-check-label fw-semibold" for="{{ form.email_notifications.id_for_label }}">
+                                        <i class="bi bi-envelope-at-fill text-danger me-1"></i> Offline Email Notifications
+                                    </label>
+                                </div>
+                                <small class="text-muted d-block ms-4" style="font-size: 0.8rem;">
+                                    Automatically receive an email notification on your registered Gmail whenever you receive a direct or group message while offline.
+                                </small>
+                            </div>
+
+                            <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+                                <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary px-4">Cancel</a>
+                                <button type="submit" class="btn btn-primary-custom px-4">
+                                    <i class="bi bi-check-lg me-1"></i> Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function previewImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('avatarPreview');
+                const fallback = document.getElementById('avatarFallback');
+                if (preview) {
+                    preview.src = e.target.result;
+                    preview.classList.remove('d-none');
+                }
+                if (fallback) {
+                    fallback.classList.add('d-none');
+                }
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+</script>
+{% endblock %}

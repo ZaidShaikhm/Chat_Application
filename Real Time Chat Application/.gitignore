@@ -1,0 +1,33 @@
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3-journal
+
+# Database
+# (Uncomment the line below if you prefer not to commit the SQLite database)
+# db.sqlite3
+
+# Uploaded Media in production (optional, keep default structure)
+# media/attachments/*
+# media/profiles/*
+# media/group_avatars/*
+
+# Logs
+*.log
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS Generated files
+.DS_Store
+Thumbs.db
+

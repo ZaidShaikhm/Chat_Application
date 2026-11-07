@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}DjangoChat - Modern Real-Time Chat Platform | MCA Project{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Hero Section -->
+    <div class="row align-items-center justify-content-center py-4 text-center">
+        <div class="col-lg-9">
+            <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fw-semibold mb-3 border border-primary-subtle">
+                <i class="bi bi-mortarboard-fill me-1"></i> MCA Academic Project Demonstration
+            </span>
+            <h1 class="display-4 fw-bold mb-3 lh-sm">
+                Real-Time Messaging Powered by <span class="text-primary">Python & Django Channels</span>
+            </h1>
+            <p class="lead text-secondary mb-4 mx-auto" style="max-width: 720px;">
+                A complete, full-stack real-time communication platform built using Django, Django Channels, WebSockets, and SQLite. Experience zero-latency messaging, private chats, group channels, file attachments, and live presence.
+            </p>
+            <div class="d-flex justify-content-center gap-3 flex-wrap">
+                <a href="{% url 'register' %}" class="btn btn-primary-custom btn-lg px-4 shadow">
+                    <i class="bi bi-person-plus-fill me-1"></i> Create Free Account
+                </a>
+                <a href="{% url 'login' %}" class="btn btn-outline-secondary btn-lg px-4">
+                    <i class="bi bi-box-arrow-in-right me-1"></i> Sign In to Chat
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature Highlights -->
+    <div class="row g-4 mt-4">
+        <div class="col-md-4">
+            <div class="app-card app-card-hover p-4 h-100">
+                <div class="avatar avatar-lg bg-primary-subtle text-primary mb-3">
+                    <i class="bi bi-lightning-charge-fill"></i>
+                </div>
+                <h4 class="fw-bold mb-2">WebSockets & Channels</h4>
+                <p class="text-secondary small">
+                    Messages are delivered instantaneously using asynchronous ASGI WebSocket connections managed through Django Channels consumers.
+                </p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="app-card app-card-hover p-4 h-100">
+                <div class="avatar avatar-lg bg-info-subtle text-info mb-3">
+                    <i class="bi bi-chat-heart-fill"></i>
+                </div>
+                <h4 class="fw-bold mb-2">1-on-1 & Group Chats</h4>
+                <p class="text-secondary small">
+                    Start private end-to-end conversations with any registered student or colleague, or create group chat rooms with multiple participants.
+                </p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="app-card app-card-hover p-4 h-100">
+                <div class="avatar avatar-lg bg-success-subtle text-success mb-3">
+                    <i class="bi bi-shield-check"></i>
+                </div>
+                <h4 class="fw-bold mb-2">SQLite Database</h4>
+                <p class="text-secondary small">
+                    All messages, attachments, user profiles, and group memberships are fully normalized and stored in SQLite, easily inspectable via DB Browser.
+                </p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="app-card app-card-hover p-4 h-100">
+                <div class="avatar avatar-lg bg-warning-subtle text-warning mb-3">
+                    <i class="bi bi-paperclip"></i>
+                </div>
+                <h4 class="fw-bold mb-2">File & Image Sharing</h4>
+                <p class="text-secondary small">
+                    Exchange images, screenshots, PDFs, and documents directly inside private or group chat streams with instant live previews.
+                </p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="app-card app-card-hover p-4 h-100">
+                <div class="avatar avatar-lg bg-primary-subtle text-primary mb-3">
+                    <i class="bi bi-person-check-fill"></i>
+                </div>
+                <h4 class="fw-bold mb-2">Online Presence & Typing</h4>
+                <p class="text-secondary small">
+                    Track real-time active user status indicators and live typing notifications as users compose responses.
+                </p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="app-card app-card-hover p-4 h-100">
+                <div class="avatar avatar-lg bg-secondary-subtle text-secondary mb-3">
+                    <i class="bi bi-moon-stars-fill"></i>
+                </div>
+                <h4 class="fw-bold mb-2">Modern Dual Themes</h4>
+                <p class="text-secondary small">
+                    Enjoy a beautiful responsive interface crafted with Bootstrap 5 and custom CSS with seamless Light and Dark mode toggle.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tech Stack Summary Banner -->
+    <div class="app-card p-4 mt-5">
+        <div class="row align-items-center text-center text-md-start">
+            <div class="col-md-8">
+                <h5 class="fw-bold mb-1">Architecture & Tech Stack</h5>
+                <p class="text-secondary mb-0 small">
+                    Backend: <strong>Python 3, Django, Django Channels, Daphne</strong> | Database: <strong>SQLite (db.sqlite3)</strong> | Frontend: <strong>Bootstrap 5, Vanilla JS WebSockets, CSS3</strong>
+                </p>
+            </div>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <a href="{% url 'register' %}" class="btn btn-primary-custom">Test Live Demo</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
